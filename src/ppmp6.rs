@@ -8,11 +8,11 @@ pub struct PPMP6<const R: usize, const C: usize> {
     pixels: [[Pixel; C]; R],
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
 pub struct Pixel {
-    r: u8,
-    g: u8,
-    b: u8,
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
 }
 
 impl Pixel {
@@ -22,9 +22,9 @@ impl Pixel {
 }
 
 impl<const R: usize, const C: usize> PPMP6<R, C> {
-    pub fn new() -> PPMP6<R, C> {
+    pub fn new(p: Pixel) -> PPMP6<R, C> {
         PPMP6 {
-            pixels: [[Pixel::default(); C]; R],
+            pixels: [[p; C]; R],
         }
     }
 
@@ -66,11 +66,21 @@ impl<const R: usize, const C: usize> PPMP6<R, C> {
         Ok(())
     }
 
-    pub fn set_color(&mut self, p: &Pixel) {
-        for row in self.pixels.iter_mut() {
-            for pixel in row.iter_mut() {
-                *pixel = *p;
-            }
+    pub fn set_col(&mut self, col_index: usize, height: f32, p: Pixel) {
+        if col_index >= C {
+            return; // Just skip extra columns
+        }
+        // dbg!(height);
+
+        if height > 1. || height < 0. {
+            return;
+        }
+        assert!(0. <= height && height <= 1.);
+
+        let row = (height * R as f32).round() as usize;
+
+        for i in 0..(R - row) {
+            self.pixels[R - i - 1][col_index] = p;
         }
     }
 }

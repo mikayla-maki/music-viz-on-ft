@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.66"
 cpal = "0.14.1"
+spectrum-analyzer = "1.2.6"
