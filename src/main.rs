@@ -27,9 +27,9 @@ fn main() -> Result<()> {
     let back_buffer = PPMP6::<ROWS, COLS>::new(Pixel::new(10, 80, 250));
     let front_buffer = PPMP6::<ROWS, COLS>::new(Pixel::new(250, 80, 10));
 
-    println!("Back buffer: \n {}", back_buffer);
+    println!("Back buffer: \n{}", back_buffer);
 
-    println!("Front buffer: \n {}", front_buffer);
+    println!("Front buffer: \n{}", front_buffer);
 
     let host = default_host();
 
