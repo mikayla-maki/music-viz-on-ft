@@ -81,9 +81,6 @@ impl<const R: usize, const C: usize> PPMP6<R, C> {
         if height > 1. || height < 0. {
             return;
         }
-        assert!(0. <= height && height <= 1.);
-
-        let height = height / 3.0;
 
         let row = (height * R as f32).round() as usize;
 

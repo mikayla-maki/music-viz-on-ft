@@ -1,3 +1,4 @@
+mod log10f;
 mod ppmp6;
 
 use std::{
@@ -16,23 +17,20 @@ use cpal::{
     Device, InputCallbackInfo, SampleRate,
 };
 
-use spectrum_analyzer::{
-    samples_fft_to_spectrum,
-    scaling::{divide_by_N, scale_20_times_log10, scale_to_zero_to_one},
-    windows::hann_window,
-};
+use log10f::log10f;
+use spectrum_analyzer::samples_fft_to_spectrum;
 
 const ROWS: usize = 35;
 const COLS: usize = 45;
 
 fn main() -> Result<()> {
     // FT is 30 x 40 pixels in size
-    let back_buffer = PPMP6::<ROWS, COLS>::new(Pixel::black(), 15);
-    let front_buffer = PPMP6::<ROWS, COLS>::new(Pixel::new(250, 80, 10), 14);
+    // let back_buffer = PPMP6::<ROWS, COLS>::new(Pixel::black(), 15);
+    // let front_buffer = PPMP6::<ROWS, COLS>::new(Pixel::new(250, 80, 10), 14);
 
-    println!("Back buffer: \n{}", back_buffer);
+    // println!("Back buffer: \n{}", back_buffer);
 
-    println!("Front buffer: \n{}", front_buffer);
+    // println!("Front buffer: \n{}", front_buffer);
 
     let host = default_host();
 
@@ -70,7 +68,7 @@ fn main() -> Result<()> {
 
     stream.play()?;
 
-    sleep(Duration::from_secs(20));
+    sleep(Duration::from_secs(60 * 60 * 10));
 
     Ok(())
 }
@@ -90,42 +88,56 @@ fn print_stuff(
 
     move |data, _info| {
         let now = Instant::now();
-        let color_idx = now.duration_since(start).as_secs_f32() * 20.; //Speed up the cycle a lil
+        let color_idx = now.duration_since(start).as_secs_f32() * 10.; //Speed up the cycle a lil
 
-        let hann_window = hann_window(data);
+        // let hann_window = hann_window(data);
 
         let spectrum_hann_window = samples_fft_to_spectrum(
-            &hann_window,
+            // &hann_window,
+            data,
             samples_rate,
             spectrum_analyzer::FrequencyLimit::All,
-            Some(&scale_20_times_log10),
+            Some(&|freq_magnitude, _stats| {
+                if freq_magnitude == 0.0 {
+                    0.0
+                } else {
+                    let freq_magnitude = 20.0 * log10f(freq_magnitude);
+                    let freq_magnitude = freq_magnitude / -50.;
+
+                    let freq_magnitude = freq_magnitude.clamp(0., 1.);
+
+                    freq_magnitude
+                }
+            }),
         )
         .unwrap();
 
-        let freq_data = spectrum_hann_window.data();
-        let chunk_size = freq_data.len() / COLS;
-        let color = color_gradient(color_idx);
+        {
+            let freq_data = spectrum_hann_window.data();
+            let chunk_size = freq_data.len() / COLS;
+            let color = color_gradient(color_idx);
 
-        for (idx, chunk) in freq_data.chunks(chunk_size).enumerate() {
-            // let first_freq = chunk.first().map(|f| f.0);
-            // let last_freq = chunk.last().map(|f| f.0);
-            let avg = chunk
-                .iter()
-                .map(|freq| freq.1.val())
-                .reduce(|total, freq| total + freq)
-                .map(|freq| freq / (chunk_size as f32));
+            for (idx, chunk) in freq_data.chunks(chunk_size).enumerate() {
+                // let first_freq = chunk.first().map(|f| f.0);
+                // let last_freq = chunk.last().map(|f| f.0);
+                let avg = chunk
+                    .iter()
+                    .map(|freq| freq.1.val())
+                    .reduce(|total, freq| total + freq)
+                    .map(|freq| freq / (chunk_size as f32));
 
-            if let Some(avg) = avg {
-                let avg = avg / -100.;
-                frame.set_col(idx, avg, color);
+                if let Some(avg) = avg {
+                    frame.set_col(idx, avg, color);
+                }
             }
-        }
 
-        print!("\x1b[2J\x1b[H{}", frame);
-        println!("sent frame with {:?}", color);
-        // send_to_big_ft(&socket, &back_frame);
-        send_to_big_ft(&socket, &frame);
-        sleep(Duration::from_millis(10));
+            // print!("\x1b[2J\x1b[H{}", frame);
+            // println!("sent frame with {:?}", color);
+            // send_to_big_ft(&socket, &back_frame);
+            send_to_big_ft(&socket, &frame);
+        }
+        // std::thread::spawn(move || drop(spectrum_hann_window));
+        sleep(Duration::from_millis(15));
     }
 }
 
